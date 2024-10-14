@@ -1,0 +1,3 @@
+﻿  Blockchain.cpp
+D:\VS PROJECTS\Blockchain\Blockchain\Blockchain.cpp(25,33): warning C4267: 'argument' : conversion de 'size_t' en 'int', perte possible de données
+  Blockchain.vcxproj -> D:\VS PROJECTS\Blockchain\x64\Debug\Blockchain.exe
