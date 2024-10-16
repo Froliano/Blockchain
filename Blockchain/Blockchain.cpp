@@ -9,32 +9,27 @@ class Block
 {
 private:
     int index;
+    int nonce = 0;
     std::string hash;
     std::string previousHash;
     std::tm time;
     std::string data;
-
-    std::string getHash()
-    {
-        return hash;
-    }
 
     int getIndex()
     {
         return index;
     }
 
-    void createHash()
+    std::string calculateHash()
     {
         std::hash<std::string> hasher;
-        std::string allString = previousHash + std::to_string(time.tm_year + 1900) + std::to_string(time.tm_mon + 1) + std::to_string(time.tm_mday) + std::to_string(time.tm_hour) + std::to_string(time.tm_min) + std::to_string(time.tm_sec) + data;
-        hash = int_to_hex(hasher(allString));
+        std::string allString = std::to_string(nonce) + previousHash + std::to_string(time.tm_year + 1900) + std::to_string(time.tm_mon + 1) + std::to_string(time.tm_mday) + std::to_string(time.tm_hour) + std::to_string(time.tm_min) + std::to_string(time.tm_sec) + data;
+        return int_to_hex(hasher(allString));
     }
 
     std::string int_to_hex(int number) {
         std::stringstream ss;
         ss << std::hex << std::setw(2) << std::setfill('0') << number;
-        std::cout << std::hex << std::endl;
         return ss.str();
     }
 
@@ -58,12 +53,12 @@ public:
         auto now = std::chrono::system_clock::now();
         std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
         localtime_s(&time, &currentTime);
-        createHash();
+        hash = calculateHash();
     }
 
     ~Block() 
     {
-        std::cout << "block " << hash << " supprimé" << std::endl;
+        std::cout << "block " << hash << " supprime" << std::endl << std::endl;
     }
 
     void print()
@@ -86,24 +81,39 @@ public:
     {
         if (previousBlock == nullptr)
         {
-            previousHash = "0";
             index = 0;
         }
         else
         {
-            previousHash = previousBlock->getHash();
             index = previousBlock->getIndex() + 1;
         }
 
         auto now = std::chrono::system_clock::now();
         std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
         localtime_s(&time, &currentTime);
-        createHash();
+    }
+
+    void mine(int difficulty)
+    {
+        std::string target(difficulty, 'f');
+
+        do 
+        {
+            nonce++;
+            hash = calculateHash();
+        } while (hash.substr(0, difficulty) != target);
+
+        std::cout << "Bloc mine : " << hash << std::endl;
     }
 
     std::string getPreviousHash()
     {
         return previousHash;
+    }
+
+    std::string getHash()
+    {
+        return hash;
     }
 
     void changePreviousHash(std::string newPreviousHash)
@@ -126,8 +136,10 @@ public:
         int index = blocks.size();
         Block* previousHash = (index == 0) ? nullptr : blocks[index - 1];
         Block* newBlock = new Block(data, previousHash);
+        newBlock->mine(difficulty);
         blocks.emplace_back(newBlock);
         std::cout << "Bloc " << index << " ajoute : " << data << std::endl;
+
     }
 
     void delBlock(int index)
@@ -147,6 +159,7 @@ public:
             {
                 previousBlock = blocks[i - 1];
             }
+            blocks[i]->mine(difficulty);
             blocks[i]->update(previousBlock);
         }
     }
@@ -175,6 +188,7 @@ private:
     }
 
     std::vector<Block*> blocks;
+    int difficulty = 3;
 };
 
 
