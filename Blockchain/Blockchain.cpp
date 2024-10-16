@@ -8,6 +8,7 @@
 class Block
 {
 private:
+    int index;
     std::string hash;
     std::string previousHash;
     std::tm time;
@@ -16,6 +17,11 @@ private:
     std::string getHash()
     {
         return hash;
+    }
+
+    int getIndex()
+    {
+        return index;
     }
 
     void createHash()
@@ -35,16 +41,18 @@ private:
 
 public:
 
-    Block(std::string data, Block* previousBlock = 0) : data(data)
+    Block(std::string data, Block* previousBlock) : data(data)
     {
 
         if (previousBlock == nullptr)
         {
             previousHash = "0";
+            index = 0;
         }
         else
         {
             previousHash = previousBlock->getHash();
+            index = previousBlock->getIndex()+1;
         }
 
         auto now = std::chrono::system_clock::now();
@@ -53,10 +61,14 @@ public:
         createHash();
     }
 
-    ~Block() {}
+    ~Block() 
+    {
+        std::cout << "block " << hash << " supprimé" << std::endl;
+    }
 
     void print()
     {
+        std::cout << "Bloc " << index << ": ";
         std::cout << "hash : " << hash << std::endl;
         std::cout << "previous hash : " << previousHash << std::endl;
         std::cout << "Date actuelle : "
@@ -70,15 +82,112 @@ public:
         std::cout << "donnee : " << data << std::endl;
     }
 
+    void update(Block* previousBlock)
+    {
+        if (previousBlock == nullptr)
+        {
+            previousHash = "0";
+            index = 0;
+        }
+        else
+        {
+            previousHash = previousBlock->getHash();
+            index = previousBlock->getIndex() + 1;
+        }
+
+        auto now = std::chrono::system_clock::now();
+        std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+        localtime_s(&time, &currentTime);
+        createHash();
+    }
+
+    std::string getPreviousHash()
+    {
+        return previousHash;
+    }
+
+    void changePreviousHash(std::string newPreviousHash)
+    {
+        previousHash = newPreviousHash;
+    }
 };
+
+class Blockchain
+{
+public:
+    static Blockchain& getInstance() 
+    {
+        static Blockchain instance;
+        return instance;
+    }
+
+    void addBlock(std::string data) 
+    {
+        int index = blocks.size();
+        Block* previousHash = (index == 0) ? nullptr : blocks[index - 1];
+        Block* newBlock = new Block(data, previousHash);
+        blocks.emplace_back(newBlock);
+        std::cout << "Bloc " << index << " ajoute : " << data << std::endl;
+    }
+
+    void delBlock(int index)
+    {
+        if (index == blocks.size())
+        {
+            blocks[index+1]->changePreviousHash(blocks[index]->getPreviousHash());
+        }
+
+        delete blocks[index];
+        blocks.erase(blocks.begin() + index);
+
+        for (int i = index; i < blocks.size(); i++)
+        {
+            Block* previousBlock = nullptr;
+            if (i != 0)
+            {
+                previousBlock = blocks[i - 1];
+            }
+            blocks[i]->update(previousBlock);
+        }
+    }
+
+    void printBlockchain() 
+    {
+        for (Block* &block : blocks) 
+        {
+            block->print();
+        }
+        std::cout << std::endl;
+    }
+
+    Blockchain(const Blockchain&) = delete;
+    Blockchain& operator=(const Blockchain&) = delete;
+
+private:
+    Blockchain() {}
+
+    ~Blockchain()
+    {
+        for (Block* block : blocks)
+        {
+            delete block;
+        }
+    }
+
+    std::vector<Block*> blocks;
+};
+
 
 int main()
 {
-    std::vector<Block*> blockchain;
-    blockchain.push_back(new Block("je suis basil"));
-    blockchain[0]->print();
+    Blockchain::getInstance().addBlock("test");
+    Blockchain::getInstance().addBlock("baba");
+    Blockchain::getInstance().addBlock("sisi");
+    Blockchain::getInstance().printBlockchain();
 
+    Blockchain::getInstance().delBlock(1);
 
+    Blockchain::getInstance().printBlockchain();
 
     return 0;
 }
