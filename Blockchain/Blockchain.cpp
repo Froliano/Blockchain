@@ -82,9 +82,11 @@ public:
         if (previousBlock == nullptr)
         {
             index = 0;
+            previousHash = "0";
         }
         else
         {
+            previousHash = previousBlock->getHash();
             index = previousBlock->getIndex() + 1;
         }
 
@@ -93,17 +95,29 @@ public:
         localtime_s(&time, &currentTime);
     }
 
-    void mine(int difficulty)
+    std::string mine(int difficulty)
     {
         std::string target(difficulty, 'f');
-
+        std::string newHash;
         do 
         {
             nonce++;
-            hash = calculateHash();
-        } while (hash.substr(0, difficulty) != target);
+            newHash = calculateHash();
+        } while (newHash.substr(0, difficulty) != target);
 
         std::cout << "Bloc mine : " << hash << std::endl;
+        nonce = 0;
+        return newHash;
+    }
+
+    void setData(std::string newData)
+    {
+        data = newData;
+    }
+
+    void setHash(std::string newHash)
+    {
+        hash = newHash;
     }
 
     std::string getPreviousHash()
@@ -136,7 +150,7 @@ public:
         int index = blocks.size();
         Block* previousHash = (index == 0) ? nullptr : blocks[index - 1];
         Block* newBlock = new Block(data, previousHash);
-        newBlock->mine(difficulty);
+        newBlock->setHash(newBlock->mine(difficulty));
         blocks.emplace_back(newBlock);
         std::cout << "Bloc " << index << " ajoute : " << data << std::endl;
 
@@ -158,9 +172,10 @@ public:
             if (i != 0)
             {
                 previousBlock = blocks[i - 1];
+
             }
-            blocks[i]->mine(difficulty);
             blocks[i]->update(previousBlock);
+            blocks[i]->setHash(blocks[i]->mine(difficulty));
         }
     }
 
@@ -173,6 +188,29 @@ public:
         std::cout << std::endl;
     }
 
+    void corrompreBlock(int index, std::string newData)
+    {
+        blocks[index]->setData(newData);
+    }
+
+    bool verificationIntegrity()
+    {
+        for (int i = 1; i < blocks.size(); i++)
+        {
+            if (blocks[i]->getHash() != blocks[i]->mine(difficulty))
+            {
+                
+                return false;
+            }
+            if (blocks[i-1]->getHash() != blocks[i]->getPreviousHash())
+            {
+                std::cout << blocks[i - 1]->getHash() << "   " << blocks[i]->getPreviousHash() << std::endl;
+                return false;
+            }
+        }
+        return true;
+    }
+
     Blockchain(const Blockchain&) = delete;
     Blockchain& operator=(const Blockchain&) = delete;
 
@@ -181,7 +219,7 @@ private:
 
     ~Blockchain()
     {
-        for (Block* block : blocks)
+        for (Block* &block : blocks)
         {
             delete block;
         }
@@ -197,11 +235,24 @@ int main()
     Blockchain::getInstance().addBlock("test");
     Blockchain::getInstance().addBlock("baba");
     Blockchain::getInstance().addBlock("sisi");
+    Blockchain::getInstance().addBlock("sisi");
+    Blockchain::getInstance().addBlock("sisi");
     Blockchain::getInstance().printBlockchain();
 
     Blockchain::getInstance().delBlock(1);
 
     Blockchain::getInstance().printBlockchain();
+    Blockchain::getInstance().corrompreBlock(3, "testqdf");
+    std::cout << std::endl << std::endl << std::endl;
+    if (Blockchain::getInstance().verificationIntegrity())
+    {
+        std::cout << "integre" << std::endl;
+    }
+    else
+    {
+        std::cout << "pas integre" << std::endl;
+    }
+    
 
     return 0;
 }
